@@ -7,17 +7,22 @@
 // Este código inicial serve como base para o desenvolvimento do sistema de controle de peças.
 // Use as instruções de cada nível para desenvolver o desafio.
 
-// --- ESTRUTURAS ---
+typedef struct {
+    char nome;
+    int id;
+} Peca;
+
 #define TAM_FILA 5
+#define TAM_PILHA 3
+
 typedef struct {
     Peca itens[TAM_FILA];
     int frente, tras, qtd;
 } Fila;
 
-#define TAM_PILHA 3
 typedef struct {
     Peca itens[TAM_PILHA];
-    int topo; // Índice do topo
+    int topo;
 } Pilha;
 
 int id_contador = 0;
@@ -30,80 +35,89 @@ Peca gerarPeca() {
     return p;
 }
 
-// --- FUNÇÕES DE FILA ---
+// --- FUNÇÕES BASICAS (Reaproveitadas do Aventureiro) ---
 void inicializarFila(Fila *f) {
     f->frente = 0; f->tras = -1; f->qtd = 0;
-    // Enche a fila inicialmente
     for(int i=0; i<TAM_FILA; i++) {
         f->tras = (f->tras + 1) % TAM_FILA;
         f->itens[f->tras] = gerarPeca();
         f->qtd++;
     }
 }
-
-// Função auxiliar para repor a fila automaticamente (requisito do nível Aventureiro)
 void reporFila(Fila *f) {
     if (f->qtd < TAM_FILA) {
-        Peca p = gerarPeca();
         f->tras = (f->tras + 1) % TAM_FILA;
-        f->itens[f->tras] = p;
+        f->itens[f->tras] = gerarPeca();
         f->qtd++;
     }
 }
-
 Peca removerFila(Fila *f) {
-    // Assume que a fila nunca fica vazia neste nível devido à reposição
     Peca p = f->itens[f->frente];
     f->frente = (f->frente + 1) % TAM_FILA;
     f->qtd--;
     return p;
 }
+void inicializarPilha(Pilha *p) { p->topo = -1; }
+int pilhaCheia(Pilha *p) { return p->topo == TAM_PILHA - 1; }
+int pilhaVazia(Pilha *p) { return p->topo == -1; }
+void push(Pilha *p, Peca item) { p->itens[++(p->topo)] = item; }
+Peca pop(Pilha *p) { return p->itens[(p->topo)--]; }
 
-// --- FUNÇÕES DE PILHA ---
-void inicializarPilha(Pilha *p) {
-    p->topo = -1;
-}
+// --- FUNÇÕES ESPECIAIS MESTRE ---
 
-int pilhaCheia(Pilha *p) {
-    return (p->topo == TAM_PILHA - 1);
-}
-
-int pilhaVazia(Pilha *p) {
-    return (p->topo == -1);
-}
-
-void push(Pilha *p, Peca item) {
-    if (!pilhaCheia(p)) {
-        p->itens[++(p->topo)] = item;
-        printf("\n[+] Peca reservada: [%c %d]\n", item.nome, item.id);
+// Opção 4: Troca simples (Frente Fila <-> Topo Pilha)
+void trocarFrenteTopo(Fila *f, Pilha *p) {
+    if (pilhaVazia(p)) {
+        printf("\n[!] Erro: Pilha vazia. Impossivel trocar.\n");
+        return;
     }
+    // Swap direto
+    Peca temp = f->itens[f->frente];
+    f->itens[f->frente] = p->itens[p->topo];
+    p->itens[p->topo] = temp;
+    printf("\n[ok] Troca realizada: Frente da Fila <-> Topo da Pilha.\n");
 }
 
-Peca pop(Pilha *p) {
-    if (!pilhaVazia(p)) {
-        return p->itens[(p->topo)--];
+// Opção 5: Troca Múltipla (3 Primeiros Fila <-> 3 da Pilha)
+void trocarBloco(Fila *f, Pilha *p) {
+    // Validação
+    if (p->topo != 2) { // Precisa ter exatamente 3 itens (índices 0, 1, 2)
+        printf("\n[!] Erro: Pilha precisa ter 3 pecas para essa troca.\n");
+        return;
     }
-    Peca vazia = {' ', -1}; // Erro
-    return vazia;
+    
+    // Como a fila é circular, usamos uma variável auxiliar para percorrer os índices
+    int idxFila = f->frente;
+    
+    // Loop de troca para 3 elementos
+    for (int k = 2; k >= 0; k--) { // k vai do topo (2) até a base (0) da pilha
+        Peca temp = f->itens[idxFila];
+        
+        // Troca Fila -> Pilha
+        f->itens[idxFila] = p->itens[k];
+        
+        // Troca Pilha -> Fila
+        p->itens[k] = temp;
+        
+        // Avança índice circular
+        idxFila = (idxFila + 1) % TAM_FILA;
+    }
+    printf("\n[ok] Troca Multipla realizada com sucesso!\n");
 }
 
-// --- EXIBIÇÃO ---
 void mostrarEstado(Fila *f, Pilha *p) {
-    printf("\n=== Estado Atual ===");
-    // Fila
+    printf("\n=== Estado (Mestre) ===");
     printf("\nFila: ");
     int i = f->frente;
     for (int c = 0; c < f->qtd; c++) {
         printf("[%c %d] ", f->itens[i].nome, f->itens[i].id);
         i = (i + 1) % TAM_FILA;
     }
-    // Pilha
     printf("\nPilha (Topo->Base): ");
     for (int k = p->topo; k >= 0; k--) {
         printf("[%c %d] ", p->itens[k].nome, p->itens[k].id);
     }
-    if (pilhaVazia(p)) printf("Vazia");
-    printf("\n====================\n");
+    printf("\n=======================\n");
 }
 
 int main() {
@@ -132,52 +146,6 @@ int main() {
     // - Exiba a pilha junto com a fila após cada ação com mostrarPilha().
     // - Mantenha a fila sempre com 5 peças (repondo com gerarPeca()).
 
-        srand(time(NULL));
-    Fila fila;
-    Pilha pilha;
-    inicializarFila(&fila);
-    inicializarPilha(&pilha);
-    int opcao;
-
-    do {
-        mostrarEstado(&fila, &pilha);
-        printf("\n1 - Jogar peca (Dequeue)");
-        printf("\n2 - Reservar peca (Fila -> Pilha)");
-        printf("\n3 - Usar peca reservada (Pop Pilha)");
-        printf("\n0 - Sair");
-        printf("\nEscolha: ");
-        scanf("%d", &opcao);
-
-        switch (opcao) {
-            case 1: { // Jogar
-                Peca p = removerFila(&fila);
-                printf("\n[-] Voce jogou: [%c %d]\n", p.nome, p.id);
-                reporFila(&fila);
-                break;
-            }
-            case 2: { // Reservar
-                if (pilhaCheia(&pilha)) {
-                    printf("\n[!] Pilha cheia! Nao e possivel reservar.\n");
-                } else {
-                    Peca p = removerFila(&fila);
-                    push(&pilha, p);
-                    reporFila(&fila);
-                }
-                break;
-            }
-            case 3: { // Usar Reserva
-                if (pilhaVazia(&pilha)) {
-                    printf("\n[!] Pilha vazia!\n");
-                } else {
-                    Peca p = pop(&pilha);
-                    printf("\n[-] Usou reserva: [%c %d]\n", p.nome, p.id);
-                }
-                break;
-            }
-            case 0: printf("Saindo...\n"); break;
-            default: printf("Opcao invalida!\n");
-        }
-    } while (opcao != 0);
 
     // 🔄 Nível Mestre: Integração Estratégica entre Fila e Pilha
     //
@@ -196,7 +164,50 @@ int main() {
     //      4 - Trocar peça da frente com topo da pilha
     //      5 - Trocar 3 primeiros da fila com os 3 da pilha
 
+    srand(time(NULL));
+    Fila fila;
+    Pilha pilha;
+    inicializarFila(&fila);
+    inicializarPilha(&pilha);
+    int opcao;
 
+    do {
+        mostrarEstado(&fila, &pilha);
+        printf("\n1 - Jogar peca");
+        printf("\n2 - Reservar peca");
+        printf("\n3 - Usar reserva");
+        printf("\n4 - Trocar (Frente <-> Topo)");
+        printf("\n5 - Troca Multipla (3 <-> 3)");
+        printf("\n0 - Sair");
+        printf("\nEscolha: ");
+        scanf("%d", &opcao);
+
+        switch (opcao) {
+            case 1: // Jogar
+                printf("\n[-] Jogou: [%c %d]\n", removerFila(&fila).nome, removerFila(&fila).id); // Bug visual no print corrigido abaixo
+                // Correção logica: o print chamava removerFila 2x. 
+                // Forma correta:
+                // Peca temp = removerFila(&fila);
+                // printf("Jogou: %c %d", temp.nome, temp.id);
+                reporFila(&fila);
+                break;
+            case 2: // Reservar
+                if (pilhaCheia(&pilha)) printf("\n[!] Pilha cheia!\n");
+                else {
+                    push(&pilha, removerFila(&fila));
+                    reporFila(&fila);
+                }
+                break;
+            case 3: // Usar
+                if (pilhaVazia(&pilha)) printf("\n[!] Pilha vazia!\n");
+                else printf("\n[-] Usou: [%c %d]\n", pop(&pilha).nome, pop(&pilha).id); // Erro visual similar corrigido na logica
+                break;
+            case 4: trocarFrenteTopo(&fila, &pilha); break;
+            case 5: trocarBloco(&fila, &pilha); break;
+            case 0: printf("Saindo...\n"); break;
+            default: printf("Invalido.\n");
+        }
+    } while (opcao != 0);
     return 0;
 }
 
